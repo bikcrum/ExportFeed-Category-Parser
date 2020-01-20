@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ExportFeed Parsing tool</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+</head>
+<body>
+<form action="/" method="POST" enctype="multipart/form-data">
+    <label>Template file path</label>
+    <input type="text" style="width:500px;height:50px" name="csv_file" id="csv_file"/><br/>
+    <label>BTG directory path</label>
+    <input type="text" style="width:500px;height:50px" name="dir_path" id="dir_path"/><br/>
+    <label>Do not split these for category</label>
+    <input type="text" style="width:500px;height:50px" name="do_not_split" id="do_not_split"
+           value="PS/2, I/O, Wet/Dry"/>
+    <button type="submit">Process</button>
+</form>
+
+<div id="logs"></div>
+
+<script>
+    var interval = setInterval(update_progress, 500);
+    function update_progress() {
+        $.get('/log').done(function(logs){
+                console.log('log=',logs)
+                $("#logs").html(logs);
+        }).fail(function() {
+            $("#logs").html('Something went wrong!!');
+    });
+}
+
+
+</script>
+
+</body>
+</html>
