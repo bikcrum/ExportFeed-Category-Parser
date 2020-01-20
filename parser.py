@@ -2,21 +2,28 @@ import os
 
 import pandas as pd
 
-a = open('rapid_cpf_amazon_flat_templates_updated.csv', 'r')
-b = open('rapid_rapidcart_btgs_updated.csv', 'r')
+# a = open('rapid_cpf_amazon_flat_templates_updated.csv', 'r')
 
-do_not_split = ['PS/2', 'I/O', 'Wet/Dry']
+# do_not_split = ['PS/2', 'I/O', 'Wet/Dry']
+
+logs = []
 
 
 def get_data_frame(file_path, file_path_fallback):
+    global logs
+
     if os.path.exists(file_path) and os.path.isfile(file_path):
-        print(file_path)
+        print('PROCESSING:%s' % file_path)
+        logs.append('PROCESSING:%s' % file_path)
         return pd.read_csv(file_path, encoding="ISO-8859-1")
     elif os.path.exists(file_path_fallback) and os.path.isfile(file_path_fallback):
-        print(file_path_fallback)
+        print('PROCESSING:%s' % file_path_fallback)
+        logs.append('PROCESSING:%s' % file_path_fallback)
         return pd.read_csv(file_path_fallback, encoding="ISO-8859-1")
     else:
-        print("%s doesn't exist" % file_path_fallback, end='\n\n')
+        print("MISSING:%s doesn't exist" % file_path_fallback, end='\n\n')
+        logs.append("MISSING:%s doesn't exist" % file_path_fallback)
+        logs.append('')
         return None
 
 
@@ -109,7 +116,7 @@ class Category(object):
         return df
 
 
-def parse(df, tmp, code):
+def parse(df, tmp, code, do_not_split):
     global root
 
     root = None
@@ -171,31 +178,48 @@ def export(data, file_path):
     df.to_csv(file_path, index=False)
 
 
-for r in a.readlines():
-    cols = r.split(',')
+def get_logs():
+    return logs
 
-    tmp = cols[1].strip('"')
-    code = cols[2].strip('"')
-    file_name = cols[6].strip('"')
 
-    df = get_data_frame('BTG Final/%s BTG/%s.csv' % (code, file_name),
-                        'BTG Final/%s BTG/%s_%s.csv' % (code, code.lower(), file_name))
+def main(dir_path, csv_file, do_not_split):
+    csv_file = open(dir_path + '/' + csv_file, 'r')
 
-    if df is None:
-        continue
+    print(do_not_split)
+    global logs
+    logs = []
 
-    out_path = 'BTG Output/%s BTG/%s_%s.csv' % (code, code.lower(), file_name)
+    for r in csv_file.readlines():
+        cols = r.split(',')
 
-    if os.path.exists(out_path) and os.path.isfile(out_path):
-        print('%s already exist' % out_path, end='\n\n')
-        continue
+        tmp = cols[1].strip('"')
+        code = cols[2].strip('"')
+        file_name = cols[6].strip('"')
 
-    data = parse(df, tmp, code)
+        df = get_data_frame('%s/BTG Final/%s BTG/%s.csv' % (dir_path, code, file_name),
+                            '%s/BTG Final/%s BTG/%s_%s.csv' % (dir_path, code, code.lower(), file_name))
 
-    if data:
-        # data.traverse()
-        export(data, out_path)
-        print('PARSE COMPLETED', end='\n\n')
-        # break
-    else:
-        print('PARSE ERROR', end='\n\n')
+        if df is None:
+            continue
+
+        out_path = '%s/BTG Output/%s BTG/%s_%s.csv' % (dir_path, code, code.lower(), file_name)
+
+        if os.path.exists(out_path) and os.path.isfile(out_path):
+            print('ALREADY EXIST:%s already exist' % out_path, end='\n\n')
+            logs.append('ALREADY EXIST:%s already exist' % out_path)
+            logs.append('')
+            continue
+
+        data = parse(df, tmp, code, do_not_split)
+
+        if data:
+            # data.traverse()
+            export(data, out_path)
+            print('COMPLETED:output:%s' % out_path, end='\n\n')
+            logs.append('COMPLETED:output:%s' % out_path)
+            logs.append('')
+            # break
+        else:
+            print('DATA EMPTY', end='\n\n')
+            logs.append('DATA EMPTY')
+            logs.append('')
