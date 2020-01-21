@@ -53,7 +53,7 @@ def split(string, splitter, except_strings):
 
 
 class Category(object):
-    def __init__(self, id, category, node_id, item_type, level, parent_id, flat_tmpl_id, market_code, node_query):
+    def __init__(self, id, category, node_id, item_type, level, parent_id, flat_tmpl_id, market_code, department_name):
         self.id = id
         self.category = category
         self.node = node_id
@@ -62,7 +62,7 @@ class Category(object):
         self.parent_id = parent_id
         self.flat_tmpl_id = flat_tmpl_id
         self.market_code = market_code
-        self.node_query = node_query
+        self.department_name = department_name
 
         self.children = []
 
@@ -71,7 +71,7 @@ class Category(object):
 
     def traverse(self):
         # print(self.id, self.category, self.node, self.item_type, self.level, self.parent_id, self.flat_tmpl_id,
-        #       self.market_code, self.node_query)
+        #       self.market_code, self.department_name)
 
         print('id=', self.id, 'category=', self.category, 'level=', self.level, 'parent_id=', self.parent_id)
 
@@ -101,7 +101,7 @@ class Category(object):
 
     def fill_data(self, df):
         df.append([self.id, self.category, self.node, self.item_type, self.level, self.parent_id, self.flat_tmpl_id,
-                   self.market_code, self.node_query])
+                   self.market_code, self.department_name])
 
         for child in self.children:
             child.fill_data(df)
@@ -114,7 +114,7 @@ class Category(object):
 
         df = pd.DataFrame(data=data,
                           columns=["id", "category", "node", "item_type", "level", "parent_id", "flat_tmpl_id",
-                                   "market_code", "node_query"])
+                                   "market_code", "department_name"])
 
         return df
 
@@ -132,13 +132,25 @@ def parse(df, tmp, code, do_not_split):
         category_seq = split(category_seq, '/', do_not_split)
         category_seq = [node.strip('"').strip('\n').strip() for node in category_seq]
 
-        node_query = ''
+        department_name = ''
+        item_type_keyword = ''
         if len(df.columns) > 2:
             node_query = df.iloc[i, 2]
             if not pd.isnull(node_query):
-                node_query = node_query.split(':')
+                node_query = node_query.split('AND')
+
+                department_name = node_query[0].strip().split(':')
+                if department_name[0].strip() == 'department_name':
+                    department_name = department_name[1].strip().strip('\n')
+                else:
+                    department_name = ''
+
                 if len(node_query) > 1:
-                    node_query = node_query[1].strip('\n')
+                    item_type_keyword = node_query[1].strip().split(':')
+                    if item_type_keyword[0].strip() == 'item_type_keyword':
+                        item_type_keyword = item_type_keyword[1].strip().strip('\n')
+                    else:
+                        item_type_keyword = ''
 
         node_name = category_seq[- 1]
 
@@ -146,12 +158,12 @@ def parse(df, tmp, code, do_not_split):
             root = Category(id=i,
                             category=node_name,
                             node_id=node_id,
-                            item_type='',
+                            item_type=item_type_keyword,
                             level=len(category_seq),
                             parent_id=-1,
                             flat_tmpl_id=tmp,
                             market_code=code,
-                            node_query=node_query)
+                            department_name=department_name)
         else:
             parent = root.get_parent(category_seq[:-1], 0)
 
@@ -163,12 +175,12 @@ def parse(df, tmp, code, do_not_split):
                 category = Category(id=i,
                                     category=node_name,
                                     node_id=node_id,
-                                    item_type='',
+                                    item_type=item_type_keyword,
                                     level=len(category_seq),
                                     parent_id=parent.id,
                                     flat_tmpl_id=tmp,
                                     market_code=code,
-                                    node_query=node_query)
+                                    department_name=department_name)
 
                 parent.add_category(category)
 
