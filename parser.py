@@ -92,7 +92,10 @@ class Category(object):
                 if parent:
                     return parent
 
-            return self
+            if i < len(category_seq) - 1:
+                return None
+            else:
+                return self
 
         return None
 
@@ -152,17 +155,22 @@ def parse(df, tmp, code, do_not_split):
         else:
             parent = root.get_parent(category_seq[:-1], 0)
 
-            category = Category(id=i,
-                                category=node_name,
-                                node_id=node_id,
-                                item_type='',
-                                level=len(category_seq),
-                                parent_id=parent.id,
-                                flat_tmpl_id=tmp,
-                                market_code=code,
-                                node_query=node_query)
+            if parent is None:
+                logs.append(
+                    "ERROR:Parent for category %s doesn't exist in %s" % (category_seq[-1], '/'.join(category_seq)))
+                return None
+            else:
+                category = Category(id=i,
+                                    category=node_name,
+                                    node_id=node_id,
+                                    item_type='',
+                                    level=len(category_seq),
+                                    parent_id=parent.id,
+                                    flat_tmpl_id=tmp,
+                                    market_code=code,
+                                    node_query=node_query)
 
-            parent.add_category(category)
+                parent.add_category(category)
 
     return root
 
@@ -182,27 +190,27 @@ def get_logs():
     return logs
 
 
-def main(dir_path, csv_file, do_not_split):
-    csv_file = open(dir_path + '/' + csv_file, 'r')
+def main(res_dir_path, csv_file_path, output_dir_path, do_not_split):
+    csv_file_path = open(csv_file_path, 'r')
 
     print(do_not_split)
     global logs
     logs = []
 
-    for r in csv_file.readlines():
+    for r in csv_file_path.readlines():
         cols = r.split(',')
 
         tmp = cols[1].strip('"')
         code = cols[2].strip('"')
         file_name = cols[6].strip('"')
 
-        df = get_data_frame('%s/BTG Final/%s BTG/%s.csv' % (dir_path, code, file_name),
-                            '%s/BTG Final/%s BTG/%s_%s.csv' % (dir_path, code, code.lower(), file_name))
+        df = get_data_frame('%s/%s BTG/%s.csv' % (res_dir_path, code, file_name),
+                            '%s/%s BTG/%s_%s.csv' % (res_dir_path, code, code.lower(), file_name))
 
         if df is None:
             continue
 
-        out_path = '%s/BTG Output/%s BTG/%s_%s.csv' % (dir_path, code, code.lower(), file_name)
+        out_path = '%s/%s BTG/%s_%s.csv' % (output_dir_path, code, code.lower(), file_name)
 
         if os.path.exists(out_path) and os.path.isfile(out_path):
             print('ALREADY EXIST:%s already exist' % out_path, end='\n\n')
@@ -220,6 +228,6 @@ def main(dir_path, csv_file, do_not_split):
             logs.append('')
             # break
         else:
-            print('DATA EMPTY', end='\n\n')
-            logs.append('DATA EMPTY')
+            print('DATA ERROR/EMPTY', end='\n\n')
+            logs.append('DATA ERROR/EMPTY')
             logs.append('')
