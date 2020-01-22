@@ -1,8 +1,7 @@
 import os
+from datetime import datetime
 
 import pandas as pd
-
-# a = open('rapid_cpf_amazon_flat_templates_updated.csv', 'r')
 
 logs = []
 
@@ -117,10 +116,12 @@ class Category(object):
         return df
 
 
-def parse(df, tmp, code, do_not_split):
+def parse(df, tmp, code):
     global root
 
     root = None
+
+    do_not_split = []
 
     for i in range(len(df)):
         node_id = df.iloc[i, 0]
@@ -150,37 +151,62 @@ def parse(df, tmp, code, do_not_split):
                     else:
                         item_type_keyword = ''
 
-        node_name = category_seq[- 1]
-
         if not root:
+            node_name = '/'.join(category_seq)
+            if len(category_seq) > 1:
+                do_not_split.append(node_name)
+
             root = Category(id=i,
                             category=node_name,
                             node_id=node_id,
                             item_type=item_type_keyword,
-                            level=len(category_seq),
+                            level=1,
                             parent_id=-1,
                             flat_tmpl_id=tmp,
                             market_code=code,
                             department_name=department_name)
         else:
-            parent = root.get_parent(category_seq[:-1], 0)
+            parent_exist = False
+            parent_name = ''
+            node_name = ''
+            for offset in range(1, len(category_seq)):
 
-            if parent is None:
-                logs.append(
-                    "ERROR:Parent for category %s doesn't exist in %s" % (category_seq[-1], '/'.join(category_seq)))
+                parent_route = category_seq[:-offset]
+
+                node_name = '/'.join(category_seq[-offset:])
+                parent_name = '/'.join(parent_route)
+
+                parent = root.get_parent(parent_route, 0)
+
+                if parent:
+                    if offset > 1:
+                        do_not_split.append(node_name)
+
+                    category = Category(id=i,
+                                        category=node_name,
+                                        node_id=node_id,
+                                        item_type=item_type_keyword,
+                                        level=parent.level + 1,
+                                        parent_id=parent.id,
+                                        flat_tmpl_id=tmp,
+                                        market_code=code,
+                                        department_name=department_name)
+
+                    parent.add_category(category)
+
+                    parent_exist = True
+                    break
+
+            if not parent_exist:
+                print("ERROR:%s doesn't have parent category %s" % (
+                    node_name, parent_name))
+                logs.append("ERROR:%s doesn't have parent category %s" % (
+                    node_name, parent_name))
                 return None
-            else:
-                category = Category(id=i,
-                                    category=node_name,
-                                    node_id=node_id,
-                                    item_type=item_type_keyword,
-                                    level=len(category_seq),
-                                    parent_id=parent.id,
-                                    flat_tmpl_id=tmp,
-                                    market_code=code,
-                                    department_name=department_name)
 
-                parent.add_category(category)
+    if len(do_not_split) > 0:
+        print('DID_NOT_SPLIT:%s' % (', '.join(do_not_split)))
+        logs.append('DID_NOT_SPLIT:%s' % (', '.join(do_not_split)))
 
     return root
 
@@ -201,12 +227,14 @@ def get_logs():
 
 
 def parser(res_dir_path, df_template, output_dir_path, do_not_split):
-    df_template = pd.read_csv(df_template)
+    df_template = pd.read_csv(df_template, header=None)
 
     print('do not split', do_not_split)
 
     global logs
     logs = []
+
+    start = datetime.now()
 
     for i in range(len(df_template)):
 
@@ -228,7 +256,7 @@ def parser(res_dir_path, df_template, output_dir_path, do_not_split):
             logs.append('')
             continue
 
-        data = parse(df, tmp, code, do_not_split)
+        data = parse(df, tmp, code)
 
         if data:
             # data.traverse()
@@ -236,14 +264,15 @@ def parser(res_dir_path, df_template, output_dir_path, do_not_split):
             print('COMPLETED:output:%s' % out_path, end='\n\n')
             logs.append('COMPLETED:output:%s' % out_path)
             logs.append('')
-            # break
         else:
             print('DATA ERROR/EMPTY', end='\n\n')
             logs.append('DATA ERROR/EMPTY')
             logs.append('')
 
-    print('OPERATION COMPLETED. Check logs')
-    logs.append('OPERATION COMPLETED. Check logs')
+    end = datetime.now()
+
+    print('OPERATION COMPLETED in %s. Check logs' % (end - start))
+    logs.append('OPERATION COMPLETED in %s. Check logs' % (end - start))
     logs.append('')
 
     out_logs = open('%s/logs.txt' % output_dir_path, 'w')
@@ -254,5 +283,19 @@ def parser(res_dir_path, df_template, output_dir_path, do_not_split):
     for log in logs:
         if log.startswith('ERROR:'):
             out_logs.write(log + '\n\n')
+
+    out_logs.close()
+
+    out_logs = open('%s/logs-nosplit.txt' % output_dir_path, 'w')
+    for log in logs:
+        if log.startswith('DID_NOT_SPLIT:'):
+            out_logs.write(log[len('DID_NOT_SPLIT:'):] + '\n')
+
+    out_logs.close()
+
+    out_logs = open('%s/logs-missing-files.txt' % output_dir_path, 'w')
+    for log in logs:
+        if log.startswith('MISSING:'):
+            out_logs.write(log[len('MISSING:'):] + '\n\n')
 
     out_logs.close()
