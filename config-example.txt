@@ -1,4 +1,3 @@
-csv_file_path=
-res_dir_path=
-output_dir_path=
-do_not_split=
+template_csv_file_path=/path/to/your/template_file.csv
+btg_directory_path=/path/to/your/btg/directory
+output_directory_path=/path/to/your/output/directory

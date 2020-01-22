@@ -12,31 +12,22 @@ def main():
             if len(config) > 1:
                 configs[config[0].strip('\n').strip()] = config[1].strip('\n').strip()
 
-    if 'res_dir_path' not in configs or len(configs['res_dir_path']) == 0:
-        print("res_dir_path doesn't exist")
+    if 'btg_directory_path' not in configs or len(configs['btg_directory_path']) == 0:
+        print("btg_directory_path doesn't exist")
         return
-    res_dir_path = configs['res_dir_path']
+    btg_directory_path = configs['btg_directory_path']
 
-    if 'csv_file_path' not in configs or len(configs['csv_file_path']) == 0:
-        print("csv_file_path doesn't exist")
+    if 'template_csv_file_path' not in configs or len(configs['template_csv_file_path']) == 0:
+        print("template_csv_file_path doesn't exist")
         return
-    csv_file_path = configs['csv_file_path']
+    template_csv_file_path = configs['template_csv_file_path']
 
-    if 'output_dir_path' not in configs or len(configs['output_dir_path']) == 0:
+    if 'output_directory_path' not in configs or len(configs['output_directory_path']) == 0:
         print("output_dir_path doesn't exist")
         return
-    output_dir_path = configs['output_dir_path']
+    output_directory_path = configs['output_directory_path']
 
-    if 'do_not_split' not in configs:
-        print("do_not_split doesn't exist")
-        return
-
-    if len(configs['do_not_split']) > 1:
-        do_not_split = [a.strip() for a in configs['do_not_split'].split(',')]
-    else:
-        do_not_split = []
-
-    parser(res_dir_path, csv_file_path, output_dir_path, do_not_split)
+    parser(btg_directory_path, template_csv_file_path, output_directory_path)
 
 
 main()

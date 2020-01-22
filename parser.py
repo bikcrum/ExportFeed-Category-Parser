@@ -205,8 +205,8 @@ def parse(df, tmp, code):
                 return None
 
     if len(do_not_split) > 0:
-        print('DID_NOT_SPLIT:%s' % (', '.join(do_not_split)))
-        logs.append('DID_NOT_SPLIT:%s' % (', '.join(do_not_split)))
+        print('DID_NOT_SPLIT:%s' % (', '.join(['"%s"' % text for text in do_not_split])))
+        logs.append(('DID_NOT_SPLIT:%s' % (', '.join(['"%s"' % text for text in do_not_split]))))
 
     return root
 
@@ -226,29 +226,27 @@ def get_logs():
     return logs
 
 
-def parser(res_dir_path, df_template, output_dir_path, do_not_split):
-    df_template = pd.read_csv(df_template, header=None)
-
-    print('do not split', do_not_split)
+def parser(btg_directory_path, template_csv_file_path, output_directory_path):
+    template_csv_df = pd.read_csv(template_csv_file_path, header=None)
 
     global logs
     logs = []
 
     start = datetime.now()
 
-    for i in range(len(df_template)):
+    for i in range(len(template_csv_df)):
 
-        tmp = df_template.iloc[i, 0]
-        code = df_template.iloc[i, 2]
-        file_name = df_template.iloc[i, 6]
+        tmp = template_csv_df.iloc[i, 0]
+        code = template_csv_df.iloc[i, 2]
+        file_name = template_csv_df.iloc[i, 6]
 
-        df = get_data_frame('%s/%s BTG/%s.csv' % (res_dir_path, code, file_name),
-                            '%s/%s BTG/%s_%s.csv' % (res_dir_path, code, code.lower(), file_name))
+        df = get_data_frame('%s/%s BTG/%s.csv' % (btg_directory_path, code, file_name),
+                            '%s/%s BTG/%s_%s.csv' % (btg_directory_path, code, code.lower(), file_name))
 
         if df is None:
             continue
 
-        out_path = '%s/%s BTG/%s_%s.csv' % (output_dir_path, code, code.lower(), file_name)
+        out_path = '%s/%s BTG/%s_%s.csv' % (output_directory_path, code, code.lower(), file_name)
 
         if os.path.exists(out_path) and os.path.isfile(out_path):
             print('ALREADY EXIST:%s already exist' % out_path, end='\n\n')
@@ -275,25 +273,25 @@ def parser(res_dir_path, df_template, output_dir_path, do_not_split):
     logs.append('OPERATION COMPLETED in %s. Check logs' % (end - start))
     logs.append('')
 
-    out_logs = open('%s/logs.txt' % output_dir_path, 'w')
+    out_logs = open('%s/logs.txt' % output_directory_path, 'w')
     out_logs.write('\n'.join(logs))
     out_logs.close()
 
-    out_logs = open('%s/logs-error.txt' % output_dir_path, 'w')
+    out_logs = open('%s/logs-error.txt' % output_directory_path, 'w')
     for log in logs:
         if log.startswith('ERROR:'):
             out_logs.write(log + '\n\n')
 
     out_logs.close()
 
-    out_logs = open('%s/logs-nosplit.txt' % output_dir_path, 'w')
+    out_logs = open('%s/logs-nosplit.txt' % output_directory_path, 'w')
     for log in logs:
         if log.startswith('DID_NOT_SPLIT:'):
             out_logs.write(log[len('DID_NOT_SPLIT:'):] + '\n')
 
     out_logs.close()
 
-    out_logs = open('%s/logs-missing-files.txt' % output_dir_path, 'w')
+    out_logs = open('%s/logs-missing-files.txt' % output_directory_path, 'w')
     for log in logs:
         if log.startswith('MISSING:'):
             out_logs.write(log[len('MISSING:'):] + '\n\n')
