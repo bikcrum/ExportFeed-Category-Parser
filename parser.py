@@ -243,3 +243,18 @@ def main(res_dir_path, csv_file_path, output_dir_path, do_not_split):
             print('DATA ERROR/EMPTY', end='\n\n')
             logs.append('DATA ERROR/EMPTY')
             logs.append('')
+
+    print('OPERATION COMPLETED. Check logs')
+    logs.append('OPERATION COMPLETED. Check logs')
+    logs.append('')
+
+    out_logs = open('%s/logs.txt' % output_dir_path, 'w')
+    out_logs.write('\n'.join(logs))
+    out_logs.close()
+
+    out_logs = open('%s/logs-error.txt' % output_dir_path, 'w')
+    for log in logs:
+        if log.startswith('ERROR:'):
+            out_logs.write(log + '\n\n')
+
+    out_logs.close()
