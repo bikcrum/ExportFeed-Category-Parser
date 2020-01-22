@@ -200,28 +200,19 @@ def get_logs():
     return logs
 
 
-def main(res_dir_path, csv_file_path, output_dir_path):
-    csv_file_path = open(csv_file_path, 'r')
-
-    do_not_split = []
-    if os.path.exists('do_not_split.txt') and os.path.isfile('do_not_split.txt'):
-        do_not_split_file = open('do_not_split.txt', 'r')
-
-        do_not_split = [line.strip('\n').strip() for line in do_not_split_file.readlines()]
-
-        do_not_split_file.close()
+def parser(res_dir_path, df_template, output_dir_path, do_not_split):
+    df_template = pd.read_csv(df_template)
 
     print('do not split', do_not_split)
 
     global logs
     logs = []
 
-    for r in csv_file_path.readlines():
-        cols = r.split(',')
+    for i in range(len(df_template)):
 
-        tmp = cols[1].strip('"')
-        code = cols[2].strip('"')
-        file_name = cols[6].strip('"')
+        tmp = df_template.iloc[i, 0]
+        code = df_template.iloc[i, 2]
+        file_name = df_template.iloc[i, 6]
 
         df = get_data_frame('%s/%s BTG/%s.csv' % (res_dir_path, code, file_name),
                             '%s/%s BTG/%s_%s.csv' % (res_dir_path, code, code.lower(), file_name))

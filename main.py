@@ -1,30 +1,42 @@
-import threading
+import os
 
-from flask import Flask, render_template, request
-
-from parser import main, get_logs
-
-app = Flask(__name__)
+from parser import parser
 
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    if request.method == "POST":
-        csv_file_path = request.form["csv_file_path"]
-        res_dir_path = request.form['res_dir_path']
-        output_dir_path = request.form['output_dir_path']
+def main():
+    configs = {}
+    if os.path.exists('config.txt') and os.path.isfile('config.txt'):
+        config_file = open('config.txt')
+        for line in config_file.readlines():
+            config = line.split('=')
+            if len(config) > 1:
+                configs[config[0].strip('\n').strip()] = config[1].strip('\n').strip()
 
-        t = threading.Thread(target=main, args=(res_dir_path, csv_file_path, output_dir_path,))
+    if 'res_dir_path' not in configs or len(configs['res_dir_path']) == 0:
+        print("res_dir_path doesn't exist")
+        return
+    res_dir_path = configs['res_dir_path']
 
-        t.start()
+    if 'csv_file_path' not in configs or len(configs['csv_file_path']) == 0:
+        print("csv_file_path doesn't exist")
+        return
+    csv_file_path = configs['csv_file_path']
 
-    return render_template('index.html')
+    if 'output_dir_path' not in configs or len(configs['output_dir_path']) == 0:
+        print("output_dir_path doesn't exist")
+        return
+    output_dir_path = configs['output_dir_path']
+
+    if 'do_not_split' not in configs:
+        print("do_not_split doesn't exist")
+        return
+
+    if len(configs['do_not_split']) > 1:
+        do_not_split = [a.strip() for a in configs['do_not_split'].split(',')]
+    else:
+        do_not_split = []
+
+    parser(res_dir_path, csv_file_path, output_dir_path, do_not_split)
 
 
-@app.route("/log", methods=["GET"])
-def logs():
-    return "<br/>".join(get_logs())
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+main()

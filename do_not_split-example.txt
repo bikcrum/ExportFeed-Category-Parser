@@ -1,8 +1,0 @@
-Rename this file to do_not_split.txt and add exception for categories that should not split
-
-Example. Following should be the content of this file
-
-PS/2
-I/O
-Wet/Dry
-A/C
