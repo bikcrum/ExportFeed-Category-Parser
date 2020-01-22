@@ -4,8 +4,6 @@ import pandas as pd
 
 # a = open('rapid_cpf_amazon_flat_templates_updated.csv', 'r')
 
-# do_not_split = ['PS/2', 'I/O', 'Wet/Dry']
-
 logs = []
 
 
@@ -202,10 +200,19 @@ def get_logs():
     return logs
 
 
-def main(res_dir_path, csv_file_path, output_dir_path, do_not_split):
+def main(res_dir_path, csv_file_path, output_dir_path):
     csv_file_path = open(csv_file_path, 'r')
 
-    print(do_not_split)
+    do_not_split = []
+    if os.path.exists('do_not_split.txt') and os.path.isfile('do_not_split.txt'):
+        do_not_split_file = open('do_not_split.txt', 'r')
+
+        do_not_split = [line.strip('\n').strip() for line in do_not_split_file.readlines()]
+
+        do_not_split_file.close()
+
+    print('do not split', do_not_split)
+
     global logs
     logs = []
 

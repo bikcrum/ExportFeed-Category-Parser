@@ -13,12 +13,8 @@ def home():
         csv_file_path = request.form["csv_file_path"]
         res_dir_path = request.form['res_dir_path']
         output_dir_path = request.form['output_dir_path']
-        do_not_split = request.form['do_not_split']
 
-        # Example: do_not_split = ['PS/2', 'I/O', 'Wet/Dry']
-        do_not_split = [a.strip() for a in do_not_split.split(',')]
-
-        t = threading.Thread(target=main, args=(res_dir_path, csv_file_path, output_dir_path, do_not_split,))
+        t = threading.Thread(target=main, args=(res_dir_path, csv_file_path, output_dir_path,))
 
         t.start()
 
