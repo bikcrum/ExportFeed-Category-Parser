@@ -7,8 +7,6 @@ logs = []
 
 root = None
 
-node_map = {}
-
 
 def get_data_frame(file_path, file_path_fallback):
     global logs
@@ -65,11 +63,6 @@ class Category(object):
         self.flat_tmpl_id = flat_tmpl_id
         self.market_code = market_code
         self.department_name = department_name
-
-        if node not in node_map:
-            node_map[node] = 1
-        else:
-            node_map[node] += 1
 
         self.children = []
 
@@ -225,6 +218,7 @@ def parse(df, tmp, code, node_id_offset):
 
 def check_duplicates(df):
     nodes = {}
+
     for i in range(len(df)):
         node = df.iloc[i, 2]
         item_type = df.iloc[i, 2]
@@ -296,9 +290,6 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path, ou
     logs = []
 
     node_id_offset = int(node_id_offset.strip())
-
-    global node_map
-    node_map = {}
 
     start = datetime.now()
 
