@@ -27,7 +27,12 @@ def main():
         return
     output_directory_path = configs['output_directory_path']
 
-    parser(btg_directory_path, template_csv_file_path, output_directory_path)
+    if 'output_table_name' not in configs or len(configs['output_table_name']) == 0:
+        print("output_table_name doesn't exist")
+        return
+    output_table_name = configs['output_table_name']
+
+    parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name)
 
 
 main()

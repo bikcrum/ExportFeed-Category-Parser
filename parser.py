@@ -211,22 +211,40 @@ def parse(df, tmp, code):
     return root
 
 
-def export(data, file_path):
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+def export(data, csv_file, sql_file, table_name):
+    os.makedirs(os.path.dirname(csv_file), exist_ok=True)
+    os.makedirs(os.path.dirname(sql_file), exist_ok=True)
 
+    # create csv
     df = data.get_data_frame()
 
     # don't want first row
     df = df.iloc[1:]
 
-    df.to_csv(file_path, index=False)
+    df.to_csv(csv_file, index=False)
+
+    # create sql
+    text = 'INSERT INTO `%s` ( `category`, `node`, `item_type`, `level`, `parent_id`, `flat_tmpl_id`, `market_code`, `department_name`) VALUES\n' % table_name
+    for i in range(len(df)):
+        row = '("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (
+            df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3], df.iloc[i, 4], df.iloc[i, 5], df.iloc[i, 6], df.iloc[i, 7],
+            df.iloc[i, 8])
+
+        if i == len(df) - 1:
+            text += row + ';'
+        else:
+            text += row + ',\n'
+
+    f = open(sql_file,'w')
+    f.write(text)
+    f.close()
 
 
 def get_logs():
     return logs
 
 
-def parser(btg_directory_path, template_csv_file_path, output_directory_path):
+def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name):
     template_csv_df = pd.read_csv(template_csv_file_path, header=None)
 
     global logs
@@ -246,11 +264,13 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path):
         if df is None:
             continue
 
-        out_path = '%s/%s BTG/%s_%s.csv' % (output_directory_path, code, code.lower(), file_name)
+        out_path_csv = '%s/%s BTG/%s.csv' % (output_directory_path, code, file_name)
+        out_path_sql = '%s/%s BTG/%s.sql' % (output_directory_path, code, file_name)
 
-        if os.path.exists(out_path) and os.path.isfile(out_path):
-            print('ALREADY EXIST:%s already exist' % out_path, end='\n\n')
-            logs.append('ALREADY EXIST:%s already exist' % out_path)
+        if (os.path.exists(out_path_csv) and os.path.isfile(out_path_csv)) or (
+                os.path.exists(out_path_sql) and os.path.isfile(out_path_sql)):
+            print('ALREADY EXIST:%s|%s already exist' % (out_path_csv, out_path_sql), end='\n\n')
+            logs.append('ALREADY EXIST:%s|%s already exist' % (out_path_csv, out_path_sql))
             logs.append('')
             continue
 
@@ -258,9 +278,9 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path):
 
         if data:
             # data.traverse()
-            export(data, out_path)
-            print('COMPLETED:output:%s' % out_path, end='\n\n')
-            logs.append('COMPLETED:output:%s' % out_path)
+            export(data, out_path_csv, out_path_sql, output_table_name)
+            print('COMPLETED:output:%s' % out_path_csv, end='\n\n')
+            logs.append('COMPLETED:output:%s' % out_path_csv)
             logs.append('')
         else:
             print('DATA ERROR/EMPTY', end='\n\n')
