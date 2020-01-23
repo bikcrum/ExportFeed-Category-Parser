@@ -5,6 +5,8 @@ import pandas as pd
 
 logs = []
 
+node_id = -1
+
 
 def get_data_frame(file_path, file_path_fallback):
     global logs
@@ -50,13 +52,14 @@ def split(string, splitter, except_strings):
 
 
 class Category(object):
-    def __init__(self, id, category, node_id, item_type, level, parent_id, flat_tmpl_id, market_code, department_name):
-        self.id = id
+    def __init__(self, node_id, category, node, item_type, level, parent_node_id, flat_tmpl_id, market_code,
+                 department_name):
+        self.node_id = node_id
         self.category = category
-        self.node = node_id
+        self.node = node
         self.item_type = item_type
         self.level = level
-        self.parent_id = parent_id
+        self.parent_node_id = parent_node_id
         self.flat_tmpl_id = flat_tmpl_id
         self.market_code = market_code
         self.department_name = department_name
@@ -67,10 +70,11 @@ class Category(object):
         self.children.append(child)
 
     def traverse(self):
-        # print(self.id, self.category, self.node, self.item_type, self.level, self.parent_id, self.flat_tmpl_id,
+        # print(self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node, self.flat_tmpl_id,
         #       self.market_code, self.department_name)
 
-        print('id=', self.id, 'category=', self.category, 'level=', self.level, 'parent_id=', self.parent_id)
+        print('id=', self.node_id, 'category=', self.category, 'level=', self.level, 'parent_node_id=',
+              self.parent_node_id)
 
         for child in self.children:
             child.traverse()
@@ -97,8 +101,9 @@ class Category(object):
         return None
 
     def fill_data(self, df):
-        df.append([self.id, self.category, self.node, self.item_type, self.level, self.parent_id, self.flat_tmpl_id,
-                   self.market_code, self.department_name])
+        df.append(
+            [self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node_id, self.flat_tmpl_id,
+             self.market_code, self.department_name])
 
         for child in self.children:
             child.fill_data(df)
@@ -110,13 +115,15 @@ class Category(object):
         self.fill_data(data)
 
         df = pd.DataFrame(data=data,
-                          columns=["id", "category", "node", "item_type", "level", "parent_id", "flat_tmpl_id",
+                          columns=["node_id", "category", "node", "item_type", "level", "parent_node_id",
+                                   "flat_tmpl_id",
                                    "market_code", "department_name"])
 
         return df
 
 
 def parse(df, tmp, code):
+    global node_id
     global root
 
     root = None
@@ -124,7 +131,7 @@ def parse(df, tmp, code):
     do_not_split = []
 
     for i in range(len(df)):
-        node_id = df.iloc[i, 0]
+        node = df.iloc[i, 0]
 
         category_seq = df.iloc[i, 1]
 
@@ -156,12 +163,13 @@ def parse(df, tmp, code):
             if len(category_seq) > 1:
                 do_not_split.append(node_name)
 
-            root = Category(id=i,
+            node_id += 1
+            root = Category(node_id=node_id,
                             category=node_name,
-                            node_id=node_id,
+                            node=node,
                             item_type=item_type_keyword,
                             level=1,
-                            parent_id=-1,
+                            parent_node_id=-node_id,
                             flat_tmpl_id=tmp,
                             market_code=code,
                             department_name=department_name)
@@ -182,12 +190,13 @@ def parse(df, tmp, code):
                     if offset > 1:
                         do_not_split.append(node_name)
 
-                    category = Category(id=i,
+                    node_id += 1
+                    category = Category(node_id=node_id,
                                         category=node_name,
-                                        node_id=node_id,
+                                        node=node,
                                         item_type=item_type_keyword,
                                         level=parent.level + 1,
-                                        parent_id=parent.id,
+                                        parent_node_id=parent.node_id,
                                         flat_tmpl_id=tmp,
                                         market_code=code,
                                         department_name=department_name)
@@ -224,10 +233,11 @@ def export(data, csv_file, sql_file, table_name):
     df.to_csv(csv_file, index=False)
 
     # create sql
-    text = 'INSERT INTO `%s` ( `category`, `node`, `item_type`, `level`, `parent_id`, `flat_tmpl_id`, `market_code`, `department_name`) VALUES\n' % table_name
+    text = 'INSERT INTO `%s` ( `node_id`, `category`, `node`, `item_type`, `level`, `parent_node_id`, `flat_tmpl_id`, `market_code`, `department_name`) VALUES\n' % table_name
     for i in range(len(df)):
-        row = '("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (
-            df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3], df.iloc[i, 4], df.iloc[i, 5], df.iloc[i, 6], df.iloc[i, 7],
+        row = '("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (
+            df.iloc[i, 0], df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3], df.iloc[i, 4], df.iloc[i, 5], df.iloc[i, 6],
+            df.iloc[i, 7],
             df.iloc[i, 8])
 
         if i == len(df) - 1:
@@ -235,7 +245,7 @@ def export(data, csv_file, sql_file, table_name):
         else:
             text += row + ',\n'
 
-    f = open(sql_file,'w')
+    f = open(sql_file, 'w')
     f.write(text)
     f.close()
 
@@ -244,11 +254,14 @@ def get_logs():
     return logs
 
 
-def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name):
+def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name, start_node_id_offset):
     template_csv_df = pd.read_csv(template_csv_file_path, header=None)
 
     global logs
     logs = []
+
+    global node_id
+    node_id = -1 + int(start_node_id_offset.strip())
 
     start = datetime.now()
 
