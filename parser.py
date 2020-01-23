@@ -7,8 +7,6 @@ logs = []
 
 root = None
 
-node_id = -1
-
 node_map = {}
 
 
@@ -128,7 +126,7 @@ class Category(object):
         return df
 
 
-def parse(df, tmp, code):
+def parse(df, tmp, code, node_id_offset):
     global root
 
     root = None
@@ -170,12 +168,12 @@ def parse(df, tmp, code):
             if len(category_seq) > 1:
                 do_not_split.append(node_name)
 
-            root = Category(node_id=i,
+            root = Category(node_id=i + node_id_offset,
                             category=node_name,
                             node=node,
                             item_type=item_type_keyword,
                             level=1,
-                            parent_node=--1,
+                            parent_node=-1,
                             flat_tmpl_id=tmp,
                             market_code=code,
                             department_name=department_name)
@@ -196,7 +194,7 @@ def parse(df, tmp, code):
                     if offset > 1:
                         do_not_split.append(node_name)
 
-                    category = Category(node_id=i,
+                    category = Category(node_id=i + node_id_offset,
                                         category=node_name,
                                         node=node,
                                         item_type=item_type_keyword,
@@ -291,14 +289,13 @@ def get_logs():
     return logs
 
 
-def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name, start_node_id_offset):
+def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name, node_id_offset):
     template_csv_df = pd.read_csv(template_csv_file_path, header=None)
 
     global logs
     logs = []
 
-    global node_id
-    node_id = -1 + int(start_node_id_offset.strip())
+    node_id_offset = int(node_id_offset.strip())
 
     global node_map
     node_map = {}
@@ -327,7 +324,7 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path, ou
             logs.append('')
             continue
 
-        data = parse(df, tmp, code)
+        data = parse(df, tmp, code, node_id_offset)
 
         if data:
             # data.traverse()
