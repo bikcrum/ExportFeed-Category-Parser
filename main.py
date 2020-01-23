@@ -33,7 +33,7 @@ def main():
         return
     output_table_name = configs['output_table_name']
 
-    start_node_id_offset = 0
+    start_node_id_offset = '0'
     if len(sys.argv) > 1:
         start_node_id_offset = sys.argv[1]
     parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name, start_node_id_offset)

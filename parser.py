@@ -5,7 +5,11 @@ import pandas as pd
 
 logs = []
 
+root = None
+
 node_id = -1
+
+node_map = {}
 
 
 def get_data_frame(file_path, file_path_fallback):
@@ -52,17 +56,22 @@ def split(string, splitter, except_strings):
 
 
 class Category(object):
-    def __init__(self, node_id, category, node, item_type, level, parent_node_id, flat_tmpl_id, market_code,
+    def __init__(self, node_id, category, node, item_type, level, parent_node, flat_tmpl_id, market_code,
                  department_name):
         self.node_id = node_id
         self.category = category
         self.node = node
         self.item_type = item_type
         self.level = level
-        self.parent_node_id = parent_node_id
+        self.parent_node = parent_node
         self.flat_tmpl_id = flat_tmpl_id
         self.market_code = market_code
         self.department_name = department_name
+
+        if node not in node_map:
+            node_map[node] = 1
+        else:
+            node_map[node] += 1
 
         self.children = []
 
@@ -70,11 +79,8 @@ class Category(object):
         self.children.append(child)
 
     def traverse(self):
-        # print(self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node, self.flat_tmpl_id,
-        #       self.market_code, self.department_name)
-
-        print('id=', self.node_id, 'category=', self.category, 'level=', self.level, 'parent_node_id=',
-              self.parent_node_id)
+        print(self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node, self.flat_tmpl_id,
+              self.market_code, self.department_name)
 
         for child in self.children:
             child.traverse()
@@ -102,7 +108,7 @@ class Category(object):
 
     def fill_data(self, df):
         df.append(
-            [self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node_id, self.flat_tmpl_id,
+            [self.node_id, self.category, self.node, self.item_type, self.level, self.parent_node, self.flat_tmpl_id,
              self.market_code, self.department_name])
 
         for child in self.children:
@@ -115,7 +121,7 @@ class Category(object):
         self.fill_data(data)
 
         df = pd.DataFrame(data=data,
-                          columns=["node_id", "category", "node", "item_type", "level", "parent_node_id",
+                          columns=["node_id", "category", "node", "item_type", "level", "parent_node",
                                    "flat_tmpl_id",
                                    "market_code", "department_name"])
 
@@ -123,7 +129,6 @@ class Category(object):
 
 
 def parse(df, tmp, code):
-    global node_id
     global root
 
     root = None
@@ -138,38 +143,39 @@ def parse(df, tmp, code):
         category_seq = split(category_seq, '/', do_not_split)
         category_seq = [node.strip('"').strip('\n').strip() for node in category_seq]
 
-        department_name = ''
-        item_type_keyword = ''
+        query_map = {}
         if len(df.columns) > 2:
             node_query = df.iloc[i, 2]
             if not pd.isnull(node_query):
                 node_query = node_query.split('AND')
 
-                department_name = node_query[0].strip().split(':')
-                if department_name[0].strip() == 'department_name':
-                    department_name = department_name[1].strip().strip('\n')
-                else:
-                    department_name = ''
+                for q in node_query:
+                    query = q.split(':')
 
-                if len(node_query) > 1:
-                    item_type_keyword = node_query[1].strip().split(':')
-                    if item_type_keyword[0].strip() == 'item_type_keyword':
-                        item_type_keyword = item_type_keyword[1].strip().strip('\n')
-                    else:
-                        item_type_keyword = ''
+                    if len(query) > 1:
+                        query_map[query[0].strip('\n').strip()] = query[1].strip('\n').strip()
+
+        if 'item_type_keyword' in query_map:
+            item_type_keyword = query_map['item_type_keyword']
+        else:
+            item_type_keyword = ''
+
+        if 'department_name' in query_map:
+            department_name = query_map['department_name']
+        else:
+            department_name = ''
 
         if not root:
             node_name = '/'.join(category_seq)
             if len(category_seq) > 1:
                 do_not_split.append(node_name)
 
-            node_id += 1
-            root = Category(node_id=node_id,
+            root = Category(node_id=i,
                             category=node_name,
                             node=node,
                             item_type=item_type_keyword,
                             level=1,
-                            parent_node_id=-node_id,
+                            parent_node=--1,
                             flat_tmpl_id=tmp,
                             market_code=code,
                             department_name=department_name)
@@ -190,13 +196,12 @@ def parse(df, tmp, code):
                     if offset > 1:
                         do_not_split.append(node_name)
 
-                    node_id += 1
-                    category = Category(node_id=node_id,
+                    category = Category(node_id=i,
                                         category=node_name,
                                         node=node,
                                         item_type=item_type_keyword,
                                         level=parent.level + 1,
-                                        parent_node_id=parent.node_id,
+                                        parent_node=parent.node,
                                         flat_tmpl_id=tmp,
                                         market_code=code,
                                         department_name=department_name)
@@ -220,6 +225,27 @@ def parse(df, tmp, code):
     return root
 
 
+def check_duplicates(df):
+    nodes = {}
+    for i in range(len(df)):
+        node = df.iloc[i, 2]
+        item_type = df.iloc[i, 2]
+
+        if (node, item_type) in nodes:
+            nodes[(node, item_type)] += 1
+        else:
+            nodes[(node, item_type)] = 1
+
+    duplicate = False
+
+    for k in nodes:
+        if nodes[k] > 1:
+            duplicate = True
+            print(k, nodes[k])
+
+    return duplicate
+
+
 def export(data, csv_file, sql_file, table_name):
     os.makedirs(os.path.dirname(csv_file), exist_ok=True)
     os.makedirs(os.path.dirname(sql_file), exist_ok=True)
@@ -230,13 +256,22 @@ def export(data, csv_file, sql_file, table_name):
     # don't want first row
     df = df.iloc[1:]
 
+    # remove duplicates based on columns
+    df = df.drop_duplicates(subset=['node', 'item_type'], keep="first")
+
+    if check_duplicates(df):
+        print('ERROR:DUPLICATE_EXIST')
+        logs.append('ERROR:DUPLICATE_EXIST')
+        logs.append('')
+        return False
+
     df.to_csv(csv_file, index=False)
 
     # create sql
-    text = 'INSERT INTO `%s` ( `node_id`, `category`, `node`, `item_type`, `level`, `parent_node_id`, `flat_tmpl_id`, `market_code`, `department_name`) VALUES\n' % table_name
+    text = 'INSERT INTO `%s` (`category`, `node`, `item_type`, `level`, `parent_node`, `flat_tmpl_id`, `market_code`, `department_name`) VALUES\n' % table_name
     for i in range(len(df)):
-        row = '("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (
-            df.iloc[i, 0], df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3], df.iloc[i, 4], df.iloc[i, 5], df.iloc[i, 6],
+        row = '("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (
+            df.iloc[i, 1], df.iloc[i, 2], df.iloc[i, 3], df.iloc[i, 4], df.iloc[i, 5], df.iloc[i, 6],
             df.iloc[i, 7],
             df.iloc[i, 8])
 
@@ -248,6 +283,8 @@ def export(data, csv_file, sql_file, table_name):
     f = open(sql_file, 'w')
     f.write(text)
     f.close()
+
+    return True
 
 
 def get_logs():
@@ -262,6 +299,9 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path, ou
 
     global node_id
     node_id = -1 + int(start_node_id_offset.strip())
+
+    global node_map
+    node_map = {}
 
     start = datetime.now()
 
@@ -291,10 +331,11 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path, ou
 
         if data:
             # data.traverse()
-            export(data, out_path_csv, out_path_sql, output_table_name)
-            print('COMPLETED:output:%s' % out_path_csv, end='\n\n')
-            logs.append('COMPLETED:output:%s' % out_path_csv)
-            logs.append('')
+            if export(data, out_path_csv, out_path_sql, output_table_name):
+                print('COMPLETED:output:%s' % out_path_csv, end='\n\n')
+                logs.append('COMPLETED:output:%s' % out_path_csv)
+                logs.append('')
+
         else:
             print('DATA ERROR/EMPTY', end='\n\n')
             logs.append('DATA ERROR/EMPTY')
