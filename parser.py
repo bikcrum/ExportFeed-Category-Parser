@@ -147,7 +147,7 @@ def parse(df, tmp, code, node_id_offset):
                         query_map[query[0].strip('\n').strip()] = query[1].strip('\n').strip()
 
         if 'item_type_keyword' in query_map:
-            item_type_keyword = query_map['item_type_keyword']
+            item_type_keyword = query_map['item_type_keyword'].strip('(').strip(')').split('OR')[0].strip()
         else:
             item_type_keyword = ''
 
