@@ -8,20 +8,14 @@ logs = []
 root = None
 
 
-def get_data_frame(file_path, file_path_fallback):
+def get_data_frame(file_path):
     global logs
-
     if os.path.exists(file_path) and os.path.isfile(file_path):
         print('PROCESSING:%s' % file_path)
         logs.append('PROCESSING:%s' % file_path)
         return pd.read_csv(file_path, encoding="ISO-8859-1")
-    elif os.path.exists(file_path_fallback) and os.path.isfile(file_path_fallback):
-        print('PROCESSING:%s' % file_path_fallback)
-        logs.append('PROCESSING:%s' % file_path_fallback)
-        return pd.read_csv(file_path_fallback, encoding="ISO-8859-1")
     else:
-        print("MISSING:%s doesn't exist" % file_path_fallback, end='\n\n')
-        logs.append("MISSING:%s doesn't exist" % file_path_fallback)
+        print("MISSING:%s doesn't exist" % file_path, end='\n\n')
         logs.append('')
         return None
 
@@ -284,7 +278,7 @@ def get_logs():
 
 
 def parser(btg_directory_path, template_csv_file_path, output_directory_path, output_table_name, node_id_offset):
-    template_csv_df = pd.read_csv(template_csv_file_path, header=None)
+    template_csv_df = pd.read_csv(template_csv_file_path)
 
     global logs
     logs = []
@@ -295,18 +289,17 @@ def parser(btg_directory_path, template_csv_file_path, output_directory_path, ou
 
     for i in range(len(template_csv_df)):
 
-        tmp = template_csv_df.iloc[i, 0]
-        code = template_csv_df.iloc[i, 2]
-        file_name = template_csv_df.iloc[i, 6]
+        tmp = template_csv_df.loc[i, 'tmpl_id']
+        code = template_csv_df.loc[i, 'country']
+        file_name = template_csv_df.loc[i, 'category']
 
-        df = get_data_frame('%s/%s BTG/%s.csv' % (btg_directory_path, code, file_name),
-                            '%s/%s BTG/%s_%s.csv' % (btg_directory_path, code, code.lower(), file_name))
+        df = get_data_frame('%s/%s/%s.csv' % (btg_directory_path, code, file_name))
 
         if df is None:
             continue
 
-        out_path_csv = '%s/%s BTG/%s.csv' % (output_directory_path, code, file_name)
-        out_path_sql = '%s/%s BTG/%s.sql' % (output_directory_path, code, file_name)
+        out_path_csv = '%s/%s/%s.csv' % (output_directory_path, code, file_name)
+        out_path_sql = '%s/%s/%s.sql' % (output_directory_path, code, file_name)
 
         if (os.path.exists(out_path_csv) and os.path.isfile(out_path_csv)) or (
                 os.path.exists(out_path_sql) and os.path.isfile(out_path_sql)):
